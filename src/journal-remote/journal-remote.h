@@ -56,5 +56,5 @@ typedef enum JournalSplitName {
         JOURNAL_SPLIT_NAME_HOST,
 
         _JOURNAL_SPLIT_NAME_MAX,
-        _JOURNAL_SPLIT_NAME_INVALID = -EINVAL
+        _JOURNAL_SPLIT_NAME_INVALID = -EINVAL,
 } JournalSplitName;

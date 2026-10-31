@@ -320,8 +320,7 @@ static int get_auth_cn(gnutls_x509_crt_t client_cert, char **buf) {
         if (!*buf)
                 return log_oom();
 
-        sym_gnutls_x509_crt_get_dn_by_oid(client_cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0, *buf, &len);
-        return 0;
+        return sym_gnutls_x509_crt_get_dn_by_oid(client_cert, GNUTLS_OID_X520_COMMON_NAME, 0, 0, *buf, &len);
 }
 
 static void gnutls_x509_crt_deinitp(gnutls_x509_crt_t *p) {
@@ -368,7 +367,7 @@ int check_permissions(struct MHD_Connection *connection, int *code, char **hostn
         if (use_common_name) {
                 r = get_auth_cn(client_cert, &buf);
                 if (r < 0) {
-                        *code = mhd_respond(connection, MHD_HTTP_UNAUTHORIZED, 
+                        *code = mhd_respond(connection, MHD_HTTP_UNAUTHORIZED,
                                             "Failed to determine common name from certificate");
                         return -EPERM;
                 }

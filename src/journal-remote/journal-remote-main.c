@@ -460,25 +460,31 @@ static mhd_result request_handler(
         }
 
         if (journal_remote_server_global->check_trust) {
-                if (arg_split_name == JOURNAL_SPLIT_NAME_HOST) {
+                switch (arg_split_name) {
+                case JOURNAL_SPLIT_NAME_HOST:
                         r = check_permissions(connection, &code, NULL, false);
                         if (r < 0)
                                 return code;
 
                         r = getpeername_pretty(fd, false, &hostname);
                         if (r < 0)
-                                return mhd_respond(connection, MHD_HTTP_INTERNAL_SERVER_ERROR, 
+                                return mhd_respond(connection, MHD_HTTP_INTERNAL_SERVER_ERROR,
                                                    "Cannot check remote hostname.");
-                }
-                else if (arg_split_name == JOURNAL_SPLIT_NAME_FULL) {
+                        break;
+
+                case JOURNAL_SPLIT_NAME_FULL:
                         r = check_permissions(connection, &code, &hostname, false);
                         if (r < 0)
                                 return code;
-                }
-                else if (arg_split_name == JOURNAL_SPLIT_NAME_COMMON) {
+                        break;
+
+                case JOURNAL_SPLIT_NAME_COMMON:
                         r = check_permissions(connection, &code, &hostname, true);
                         if (r < 0)
                                 return code;
+                        break;
+
+                default: assert_not_reached();
                 }
         } else {
                 r = getpeername_pretty(fd, /* include_port= */ false, &hostname);
@@ -1015,7 +1021,7 @@ static int parse_argv(int argc, char *argv[]) {
                                 return log_error_errno(arg_split_mode, "Invalid split mode: %s", opts.arg);
                         break;
 
-                OPTION_LONG("split-name", "host|full|common", "Naming convetion for output files"):
+                OPTION_LONG("split-name", "host|full|common", "Naming convention for output files"):
                         arg_split_name = journal_split_name_from_string(opts.arg);
                         if (arg_split_name == _JOURNAL_SPLIT_NAME_INVALID)
                                 return log_error_errno(arg_split_name, "Invalid split name: %s", opts.arg);
@@ -1130,17 +1136,22 @@ static int parse_argv(int argc, char *argv[]) {
         }
 
         if (arg_split_name == _JOURNAL_SPLIT_NAME_INVALID) {
-                if (arg_trust_all)
-                        arg_split_name = JOURNAL_SPLIT_NAME_HOST;
-                else
+                if (arg_listen_https && !arg_trust_all)
                         arg_split_name = JOURNAL_SPLIT_NAME_FULL;
+                else
+                        arg_split_name = JOURNAL_SPLIT_NAME_HOST;
         }
 
-        if (arg_trust_all && arg_split_name != JOURNAL_SPLIT_NAME_HOST) {
+        if (arg_split_name != JOURNAL_SPLIT_NAME_HOST && !arg_listen_https)
                 return log_error_errno(SYNTHETIC_ERRNO(EINVAL),
-                                       "For TrustedCertificateFile=%s, SplitName must be host.",
-                                       strna(arg_trust));
-        }
+                                       "For SplitName=%s, HTTPS listener must be enabled.",
+                                       journal_split_name_to_string(arg_split_name));
+
+
+        if (arg_split_name != JOURNAL_SPLIT_NAME_HOST && arg_listen_https && arg_trust_all)
+                return log_error_errno(SYNTHETIC_ERRNO(EINVAL),
+                                       "For SplitName=%s, client certificate checking must be enabled.",
+                                       journal_split_name_to_string(arg_split_name));
 
         log_debug("Full config: SplitMode=%s SplitName=%s Key=%s Cert=%s Trust=%s",
                   journal_write_split_mode_to_string(arg_split_mode),
