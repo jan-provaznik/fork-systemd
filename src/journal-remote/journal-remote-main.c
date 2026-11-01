@@ -922,7 +922,7 @@ static int parse_config(void) {
 
 static int parse_argv(int argc, char *argv[]) {
         int r;
-        bool type_a, type_b;
+        bool type_a, type_b, type_c;
 
         assert(argc >= 0);
         assert(argv);
@@ -1135,20 +1135,21 @@ static int parse_argv(int argc, char *argv[]) {
                 arg_trust = mfree(arg_trust);
         }
 
+        type_c = arg_listen_https || https_socket >= 0;
+
         if (arg_split_name == _JOURNAL_SPLIT_NAME_INVALID) {
-                if (arg_listen_https && !arg_trust_all)
+                if (type_c && !arg_trust_all)
                         arg_split_name = JOURNAL_SPLIT_NAME_FULL;
                 else
                         arg_split_name = JOURNAL_SPLIT_NAME_HOST;
         }
 
-        if (arg_split_name != JOURNAL_SPLIT_NAME_HOST && !arg_listen_https)
+        if (arg_split_name != JOURNAL_SPLIT_NAME_HOST && !type_c)
                 return log_error_errno(SYNTHETIC_ERRNO(EINVAL),
                                        "For SplitName=%s, HTTPS listener must be enabled.",
                                        journal_split_name_to_string(arg_split_name));
 
-
-        if (arg_split_name != JOURNAL_SPLIT_NAME_HOST && arg_listen_https && arg_trust_all)
+        if (arg_split_name != JOURNAL_SPLIT_NAME_HOST && type_c && arg_trust_all)
                 return log_error_errno(SYNTHETIC_ERRNO(EINVAL),
                                        "For SplitName=%s, client certificate checking must be enabled.",
                                        journal_split_name_to_string(arg_split_name));
